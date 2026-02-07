@@ -16,6 +16,7 @@
 
 import { Supervisor } from '../lib/supervisor.js';
 import { AgentChatBus, EventEmitterBus } from '../lib/message-bus.js';
+import { Logger, attachLogger } from '../lib/logger.js';
 
 // ============ Arg parsing ============
 
@@ -118,12 +119,26 @@ async function cmdStart(flags) {
 
   const sup = new Supervisor(config);
 
-  // Log handler
-  sup.on('log', (entry) => {
-    if (flags.verbose || flags.v) {
+  // Set up file logger
+  const logDir = flags['log-dir'] || config.logDir || undefined;
+  let logger = null;
+  if (logDir !== 'none') {
+    logger = new Logger({
+      dir: sup.logDir,
+      maxSizeBytes: parseInt(flags['log-max-size'] || String(10 * 1024 * 1024)),
+      maxFiles: parseInt(flags['log-max-files'] || '5'),
+      stdout: !!(flags.verbose || flags.v),
+    });
+    logger.open();
+    attachLogger(sup, logger);
+  }
+
+  // Verbose console output (when not using file logger stdout mode)
+  if ((flags.verbose || flags.v) && !logger) {
+    sup.on('log', (entry) => {
       console.log(`[${entry.ts}] ${entry.event}`, JSON.stringify(entry));
-    }
-  });
+    });
+  }
 
   // Signal handlers
   let stopping = false;
@@ -133,6 +148,7 @@ async function cmdStart(flags) {
     stopping = true;
     console.log('\nShutting down...');
     await sup.stop();
+    if (logger) logger.close();
     console.log('Swarm stopped.');
     process.exit(0);
   };
