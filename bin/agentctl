@@ -260,6 +260,7 @@ EOF
         identity_mount="-v ${identity_file}:/home/agent/.agentchat/identities/${name}.json:ro"
     fi
 
+
     echo "Starting agent '$name' in container..."
     podman run -d \
         --name "$(container_name "$name")" \
