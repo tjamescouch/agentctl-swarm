@@ -1,4 +1,4 @@
-# agentctl-swarm
+# agentswarm
 
 Supervisor for spawning, managing, and recovering fleets of AI agents that coordinate through [AgentChat](https://github.com/tjamescouch/agentchat).
 
