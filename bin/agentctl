@@ -191,8 +191,27 @@ with open(state_file, 'w') as f:
 }
 
 build_image() {
+    local clean=""
+    if [ "${2:-}" = "--clean" ] || [ "${1:-}" = "--clean" ]; then
+        clean="--no-cache"
+    fi
+
+    # Resolve the agentchat repo root containing the Dockerfile.
+    # Priority: AGENTCTL_REPO env var → ~/dev/claude/agentchat → $REPO_ROOT (fallback for dev)
+    local build_root
+    if [ -n "${AGENTCTL_REPO:-}" ] && [ -f "$AGENTCTL_REPO/docker/agent.Dockerfile" ]; then
+        build_root="$AGENTCTL_REPO"
+    elif [ -f "$HOME/dev/claude/agentchat/docker/agent.Dockerfile" ]; then
+        build_root="$HOME/dev/claude/agentchat"
+    elif [ -f "$REPO_ROOT/docker/agent.Dockerfile" ]; then
+        build_root="$REPO_ROOT"
+    else
+        echo "Error: agent.Dockerfile not found. Set AGENTCTL_REPO to the agentchat repo path." >&2
+        exit 1
+    fi
+
     echo "Building agent image..."
-    podman build -t "$IMAGE_NAME" -f "$REPO_ROOT/docker/agent.Dockerfile" "$REPO_ROOT"
+    podman build $clean -t "$IMAGE_NAME" -f "$build_root/docker/agent.Dockerfile" "$build_root"
     echo "Image '$IMAGE_NAME' built successfully"
 }
 
@@ -496,7 +515,7 @@ case "$1" in
         setup_token
         ;;
     build)
-        build_image
+        build_image "$2"
         ;;
     start)
         start_agent "$2" "$3"
