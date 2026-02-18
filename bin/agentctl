@@ -264,6 +264,7 @@ EOF
     local identity_mount=""
     local identity_file="${HOME}/.agentchat/identities/${name}.json"
     if [ -f "$identity_file" ]; then
+        chmod 644 "$identity_file" 2>/dev/null || sudo chmod 644 "$identity_file" 2>/dev/null || true
         identity_mount="-v ${identity_file}:/home/agent/.agentchat/identities/${name}.json:ro"
     fi
 
@@ -274,6 +275,8 @@ EOF
         $labels \
         -e "AGENTCHAT_PUBLIC=true" \
         -e "AGENTCHAT_URL=${AGENTCHAT_URL}" \
+        -e "NIKI_STARTUP_TIMEOUT=${NIKI_STARTUP_TIMEOUT:-600}" \
+        -e "NIKI_DEAD_AIR_TIMEOUT=${NIKI_DEAD_AIR_TIMEOUT:-5}" \
         -v "${token_file}:/run/secrets/oauth-token:ro" \
         -v "${state_dir}:/home/agent/.agentchat/agents/${name}" \
         $identity_mount \
