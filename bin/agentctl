@@ -157,6 +157,9 @@ Environment:
 Options (start):
   --model <name>           Model to run (e.g. gpt-4o, claude-opus-4-6). Saved and
                            restored on restart. Provider auto-detected from name.
+  --summarizer-model <n>  Model for context summarization (e.g. gpt-4o,
+                           llama-3.3-70b-versatile). Defaults to main model.
+                           Saved and restored on restart.
 
 Examples:
   agentctl build
@@ -231,9 +234,11 @@ start_agent() {
 
     # Parse optional flags
     local model=""
+    local summarizer_model=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --model) model="$2"; shift 2 ;;
+            --summarizer-model) summarizer_model="$2"; shift 2 ;;
             *) shift ;;
         esac
     done
@@ -271,12 +276,17 @@ start_agent() {
     local state_dir="$AGENTS_DIR/$name"
     mkdir -p "$state_dir"
 
-    # Save mission and model for restarts
+    # Save mission, model, and summarizer model for restarts
     echo "$mission" > "$state_dir/mission.txt"
     if [ -n "$model" ]; then
         echo "$model" > "$state_dir/model.txt"
     else
         rm -f "$state_dir/model.txt"
+    fi
+    if [ -n "$summarizer_model" ]; then
+        echo "$summarizer_model" > "$state_dir/summarizer-model.txt"
+    else
+        rm -f "$state_dir/summarizer-model.txt"
     fi
 
     # Initialize context file
@@ -331,6 +341,9 @@ EOF
         )
         if [ -n "$model" ]; then
             auth_args+=(-e "AGENT_MODEL=$model")
+        fi
+        if [ -n "$summarizer_model" ]; then
+            auth_args+=(-e "AGENT_SUMMARIZER_MODEL=$summarizer_model")
         fi
     else
         auth_args=(-v "${token_file}:/run/secrets/oauth-token:ro")
@@ -597,7 +610,8 @@ case "$1" in
             exit 1
         fi
         saved_model=$(cat "$AGENTS_DIR/$2/model.txt" 2>/dev/null)
-        start_agent "$2" "$mission" ${saved_model:+--model "$saved_model"}
+        saved_summarizer=$(cat "$AGENTS_DIR/$2/summarizer-model.txt" 2>/dev/null)
+        start_agent "$2" "$mission" ${saved_model:+--model "$saved_model"} ${saved_summarizer:+--summarizer-model "$saved_summarizer"}
         ;;
     status)
         show_status "$2"
@@ -636,7 +650,8 @@ case "$1" in
             if [ -n "$mission" ]; then
                 echo "Restarting '$name'..."
                 saved_model=$(cat "$AGENTS_DIR/$name/model.txt" 2>/dev/null)
-                start_agent "$name" "$mission" ${saved_model:+--model "$saved_model"}
+                saved_summarizer=$(cat "$AGENTS_DIR/$name/summarizer-model.txt" 2>/dev/null)
+                start_agent "$name" "$mission" ${saved_model:+--model "$saved_model"} ${saved_summarizer:+--summarizer-model "$saved_summarizer"}
             else
                 echo "Skipping '$name' — no saved mission"
             fi
