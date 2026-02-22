@@ -14,5 +14,8 @@
   },
   "keywords": ["agents", "swarm", "agentchat", "supervisor"],
   "author": "James Couch",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@tjamescouch/agentchat": "*"
+  }
 }
