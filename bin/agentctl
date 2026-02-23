@@ -276,17 +276,21 @@ start_agent() {
     local state_dir="$AGENTS_DIR/$name"
     mkdir -p "$state_dir"
 
+    # Fall back to saved model/summarizer if not specified on command line
+    if [ -z "$model" ] && [ -f "$state_dir/model.txt" ]; then
+        model=$(cat "$state_dir/model.txt")
+    fi
+    if [ -z "$summarizer_model" ] && [ -f "$state_dir/summarizer-model.txt" ]; then
+        summarizer_model=$(cat "$state_dir/summarizer-model.txt")
+    fi
+
     # Save mission, model, and summarizer model for restarts
     echo "$mission" > "$state_dir/mission.txt"
     if [ -n "$model" ]; then
         echo "$model" > "$state_dir/model.txt"
-    else
-        rm -f "$state_dir/model.txt"
     fi
     if [ -n "$summarizer_model" ]; then
         echo "$summarizer_model" > "$state_dir/summarizer-model.txt"
-    else
-        rm -f "$state_dir/summarizer-model.txt"
     fi
 
     # Initialize context file
@@ -342,14 +346,16 @@ EOF
             -e "GROQ_API_KEY=proxy-managed"
             -e "AGENT_RUNTIME=gro"
         )
-        if [ -n "$model" ]; then
-            auth_args+=(-e "AGENT_MODEL=$model")
-        fi
-        if [ -n "$summarizer_model" ]; then
-            auth_args+=(-e "AGENT_SUMMARIZER_MODEL=$summarizer_model")
-        fi
     else
         auth_args=(-v "${token_file}:/run/secrets/oauth-token:ro")
+    fi
+
+    # Pass model env vars regardless of auth mode
+    if [ -n "$model" ]; then
+        auth_args+=(-e "AGENT_MODEL=$model")
+    fi
+    if [ -n "$summarizer_model" ]; then
+        auth_args+=(-e "AGENT_SUMMARIZER_MODEL=$summarizer_model")
     fi
 
     echo "Starting agent '$name' in container..."
