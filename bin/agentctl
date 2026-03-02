@@ -358,6 +358,7 @@ EOF
             -e "DEEPSEEK_API_KEY=${proxy_token}"
             -e "MISTRAL_BASE_URL=http://${proxy_host}:${proxy_port}/mistral"
             -e "MISTRAL_API_KEY=${proxy_token}"
+            -e "AGENTAUTH_TOKEN=${proxy_token}"
             -e "AGENT_RUNTIME=gro"
         )
     else
